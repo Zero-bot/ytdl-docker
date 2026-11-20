@@ -1,0 +1,7 @@
+.git
+.github
+.dockerignore
+README.md
+LICENSE
+test-entrypoint.sh
+*.md
