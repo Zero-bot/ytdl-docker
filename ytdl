@@ -1,0 +1,45 @@
+#!/bin/sh
+set -eu
+
+IMAGE="mmahalingam/yt-dlp"
+OUTDIR="${YTDL_OUTDIR:-$HOME/Downloads/ytdl}"
+NETWORK="ytdl-net"
+
+usage() {
+    printf 'Usage: ytdl [--audio] [yt-dlp options] URL [URL...]\n\n'
+    printf 'Download YouTube videos/audio via a hardened Docker container.\n\n'
+    printf 'Options:\n'
+    printf '  --audio   Download best audio only (no re-encode)\n'
+    printf '  --help    Show this help\n\n'
+    printf 'Files are saved to %s (override with YTDL_OUTDIR).\n' "$OUTDIR"
+}
+
+[ $# -eq 0 ] && { usage >&2; exit 2; }
+case "${1:-}" in --help|-h) usage; exit 0 ;; esac
+
+if ! command -v docker >/dev/null 2>&1; then
+    printf 'Error: docker is not installed or not in PATH\n' >&2
+    exit 1
+fi
+
+# Ensure output directory exists
+mkdir -p "$OUTDIR"
+
+# Create isolated network if it doesn't exist
+if ! docker network inspect "$NETWORK" >/dev/null 2>&1; then
+    docker network create --driver bridge \
+        -o com.docker.network.bridge.enable_icc=false \
+        "$NETWORK" >/dev/null
+fi
+
+exec docker run --rm \
+    --read-only \
+    --tmpfs /tmp:rw,size=512m \
+    --cap-drop ALL \
+    --security-opt no-new-privileges \
+    --pids-limit 256 \
+    --memory 2g \
+    --network "$NETWORK" \
+    -v "$OUTDIR":/downloads \
+    "$IMAGE" \
+    "$@"

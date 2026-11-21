@@ -6,73 +6,58 @@ Hardened Docker image for [yt-dlp](https://github.com/yt-dlp/yt-dlp). Downloads 
 
 ## Quick start
 
+### Install
+
 ```bash
-docker pull mmahalingam/yt-dlp
+curl -fsSL https://raw.githubusercontent.com/Zero-bot/ytdl-docker/main/ytdl \
+  -o /usr/local/bin/ytdl && chmod +x /usr/local/bin/ytdl
+```
+
+Or clone the repo and copy the script:
+
+```bash
+git clone https://github.com/Zero-bot/ytdl-docker.git
+cp ytdl-docker/ytdl /usr/local/bin/ytdl
 ```
 
 ### Download a video (best quality, MKV)
 
 ```bash
-docker run --rm -v ytdl-data:/downloads mmahalingam/yt-dlp \
-  "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+ytdl "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 ```
 
 ### Download audio only (original codec, no re-encode)
 
 ```bash
-docker run --rm -v ytdl-data:/downloads mmahalingam/yt-dlp \
-  --audio "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+ytdl --audio "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 ```
 
 ### Override defaults
 
-User arguments come after the built-in defaults and override them:
+Extra yt-dlp arguments are passed through:
 
 ```bash
-docker run --rm -v ytdl-data:/downloads mmahalingam/yt-dlp \
-  -f "bv*+ba/b" --merge-output-format mp4 \
+ytdl -f "bv*+ba/b" --merge-output-format mp4 \
   "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 ```
 
-## Copy downloads to your host
-
-Downloads live in a Docker named volume. Use a one-off Alpine container to copy media files out:
+Files are saved to `~/Downloads/ytdl` by default. Override with `YTDL_OUTDIR`:
 
 ```bash
-mkdir -p ~/Downloads/ytdl
-docker run --rm \
-  -v ytdl-data:/src:ro \
-  -v "$HOME/Downloads/ytdl":/dst \
-  alpine sh -c 'cd /src && cp -v *.mp4 *.mkv *.webm *.m4a *.opus *.mp3 /dst/ 2>/dev/null; true'
+YTDL_OUTDIR=/tmp/videos ytdl "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 ```
 
-## Hardened run (recommended)
+The `ytdl` wrapper pulls the image, creates an isolated network, and runs every download in a hardened container with all security flags (read-only filesystem, capabilities dropped, PID/memory limits, network isolation). No manual Docker commands needed.
 
-For full runtime isolation, create a dedicated network and use this alias:
+### Using Docker directly
 
-```bash
-# One-time: isolated bridge with inter-container traffic disabled
-docker network create --driver bridge \
-  -o com.docker.network.bridge.enable_icc=false ytdl-net
-
-# Shell alias
-alias ytdl='docker run --rm \
-  --read-only \
-  --tmpfs /tmp:rw,size=512m \
-  --cap-drop ALL \
-  --security-opt no-new-privileges \
-  --pids-limit 256 \
-  --memory 2g \
-  --network ytdl-net \
-  -v ytdl-data:/downloads \
-  mmahalingam/yt-dlp'
-```
-
-Then just:
+If you prefer not to use the wrapper:
 
 ```bash
-ytdl "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-ytdl --audio "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+docker pull mmahalingam/yt-dlp
+
+docker run --rm -v "$HOME/Downloads/ytdl":/downloads mmahalingam/yt-dlp \
+  "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 ```
 
 ### Optional: block private-network egress (Linux)
