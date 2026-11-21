@@ -32,6 +32,7 @@ ENV XDG_CACHE_HOME=/tmp/cache \
     DENO_DIR=/tmp/deno
 
 WORKDIR /downloads
+RUN chown 10001:10001 /downloads
 USER 10001
 
 ENTRYPOINT ["ytdl"]
