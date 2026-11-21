@@ -22,7 +22,24 @@ if ! command -v docker >/dev/null 2>&1; then
     exit 1
 fi
 
-# Ensure output directory exists
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ytdl"
+PULL_MARKER="$CACHE_DIR/last-pull"
+
+need_pull=0
+if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+    need_pull=1
+elif [ ! -f "$PULL_MARKER" ]; then
+    need_pull=1
+elif [ -n "$(find "$PULL_MARKER" -mmin +360 2>/dev/null)" ]; then
+    need_pull=1
+fi
+
+if [ "$need_pull" -eq 1 ]; then
+    docker pull "$IMAGE"
+    mkdir -p "$CACHE_DIR"
+    touch "$PULL_MARKER"
+fi
+
 mkdir -p "$OUTDIR"
 
 # Create isolated network if it doesn't exist
